@@ -1,67 +1,59 @@
-"""Protocol loader. Reads a clinical-trial protocol PDF or TXT into plain text.
+"""Protocol loader. Reads a clinical-trial protocol file and turns it into
+plain markdown text.
 
-Slim copy of `auto_sap.classes.protocol_classes.Protocol` from sap-kcl,
-trimmed to just the upload-path use case (no repo-search helpers).
+Supported inputs: .txt / .md (read as-is) and .pdf / .doc / .docx
+(converted to markdown via MarkItDown). Converting everything to markdown
+means the rest of the pipeline only ever has to deal with one text format,
+regardless of what the user uploaded.
 """
 
 from __future__ import annotations
 
-import os
-from typing import Union
+from pathlib import Path
 
-import PyPDF2
+from markitdown import MarkItDown
+
+# Extensions we know how to turn into text.
+PLAIN_TEXT_EXTENSIONS = {".txt", ".md"}
+CONVERTIBLE_EXTENSIONS = {".pdf", ".doc", ".docx"}
 
 
 class Protocol:
-    """Load a clinical trial protocol from a PDF or TXT file."""
+    """Load a clinical trial protocol from a file into markdown text."""
 
     def __init__(self, file_path: str):
         if not file_path:
             raise ValueError("file_path must be provided")
 
         self.file_path = file_path
-        ext = self._check_extension(file_path)
-        if ext == ".pdf":
-            self._load_pdf()
-        elif ext == ".txt":
-            self._load_txt()
+        suffix = Path(file_path).suffix.lower()
+
+        if suffix in PLAIN_TEXT_EXTENSIONS:
+            # Already plain text / markdown - just read it.
+            self.protocol_txt = Path(file_path).read_text(encoding="utf-8", errors="replace")
+        elif suffix in CONVERTIBLE_EXTENSIONS:
+            # PDF / DOC / DOCX - convert to markdown with MarkItDown.
+            self.protocol_txt = MarkItDown().convert(file_path).text_content
+            # Save the converted markdown next to the original file, for reuse/debugging.
+            Path(file_path).with_suffix(".md").write_text(self.protocol_txt, encoding="utf-8")
         else:
-            raise ValueError(f"Unsupported file extension: {ext}")
+            raise ValueError(f"Unsupported file extension: {suffix}")
 
-    def _load_pdf(self) -> None:
-        chunks = []
-        with open(self.file_path, "rb") as fh:
-            reader = PyPDF2.PdfReader(fh)
-            for page in reader.pages:
-                text = page.extract_text() or ""
-                chunks.append(text.rstrip())
-        self.protocol_txt = "\n\n".join(chunks)
-
-    def _load_txt(self) -> None:
-        with open(self.file_path, "r", encoding="utf-8", errors="replace") as fh:
-            self.protocol_txt = fh.read()
-
-    @staticmethod
-    def _check_extension(filename: str) -> str:
-        _, ext = os.path.splitext(filename)
-        if ext.lower() not in {".txt", ".pdf"}:
-            raise ValueError(
-                f"Unsupported file extension: {ext}. Must be .txt or .pdf"
-            )
-        return ext.lower()
+    def save_protocol_txt(self, protocol_txt_path: str) -> None:
+        """Save the protocol text as a .md file at the given path."""
+        Path(protocol_txt_path).with_suffix(".md").write_text(self.protocol_txt, encoding="utf-8")
 
 
 def load_protocol_from_upload(uploaded_file) -> str:
     """Read a Streamlit UploadedFile (or any file-like with .read() and .name).
 
-    Returns the extracted protocol text. Writes to a tempfile internally so
-    Protocol() (which expects a path) keeps working uniformly across PDF/TXT.
-
-    This mirrors the production fix in sapai-streamlit's open app.
+    Returns the protocol text as markdown. Writes to a tempfile internally so
+    Protocol() (which expects a path) keeps working uniformly across all
+    supported formats.
     """
     import tempfile
 
-    suffix = os.path.splitext(getattr(uploaded_file, "name", ""))[1].lower() or ".pdf"
+    suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower() or ".pdf"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(uploaded_file.read())
         tmp_path = tmp.name

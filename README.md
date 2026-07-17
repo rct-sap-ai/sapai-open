@@ -25,7 +25,7 @@ three model families that the paper compared.
 A minimal Streamlit app that:
 
 1. accepts a user-supplied API key for OpenAI, Anthropic, or Google;
-2. ingests a clinical trial protocol (.pdf or .txt);
+2. ingests a clinical trial protocol (.pdf, .doc, .docx, .txt, or .md);
 3. runs the section-by-section SAP generation prompts from the paper; and
 4. returns a draft SAP as a `.docx`.
 
@@ -97,7 +97,7 @@ sapai-open/
     ├── chat.py               # OpenAI / Anthropic / Google wrappers + paper defaults
     ├── pipeline.py           # section-by-section orchestrator
     ├── docx_writer.py        # assembles section outputs into a .docx
-    ├── protocol.py           # PDF / TXT protocol loader
+    ├── protocol.py           # protocol loader (PDF/DOC/DOCX -> markdown via MarkItDown; TXT/MD read as-is)
     └── prompts_paper_v1.py   # FROZEN: byte-identical copy of validation prompts
 ```
 

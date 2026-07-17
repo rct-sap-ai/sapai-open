@@ -181,8 +181,8 @@ def _render_generate() -> None:
         st.html('<div class="open-step-header">Step 2 of 2 — Upload your protocol</div>')
 
         uploaded = st.file_uploader(
-            "Upload protocol (.pdf or .txt)",
-            type=["pdf", "txt"],
+            "Upload protocol (.pdf, .doc, .docx, .txt or .md)",
+            type=["pdf", "doc", "docx", "txt", "md"],
             label_visibility="collapsed",
         )
 
