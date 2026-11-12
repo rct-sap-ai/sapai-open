@@ -19,23 +19,11 @@ from typing import Optional
 import streamlit as st
 
 from . import __version__
-from .chat import PAPER_MODELS, ProviderChoice, get_chat
+from .chat import ProviderChoice, get_chat
 from .docx_writer import build_sap_docx
+from .model_catalog import PICK_YOUR_OWN, catalog_updated, choices_for, models_for, resolve_choice
 from .pipeline import run_pipeline
 from .protocol import load_protocol_from_upload
-
-
-# ── Per-provider model options (paper-validated defaults listed first) ───────
-
-MODEL_OPTIONS = {
-    "openai": ["gpt-5-2025-08-07", "gpt-5", "gpt-4o", "gpt-4o-mini"],
-    "anthropic": [
-        "claude-sonnet-4-20250514",
-        "claude-sonnet-4-5",
-        "claude-3-5-sonnet-20241022",
-    ],
-    "google": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-pro"],
-}
 
 PROVIDER_LABELS = {
     "openai": "OpenAI",
@@ -55,7 +43,8 @@ KEY_HINTS = {
 _DEFAULTS = {
     "provider": "openai",
     "api_key": "",
-    "model": PAPER_MODELS["openai"],
+    "model": models_for("openai")[0],
+    "custom_model": "",
     "step": "setup",
     "draft": None,
     "sap_docx_bytes": None,
@@ -123,7 +112,8 @@ def _render_setup() -> None:
 
         if provider != st.session_state.provider:
             st.session_state.provider = provider
-            st.session_state.model = PAPER_MODELS[provider]
+            st.session_state.model = models_for(provider)[0]
+            st.session_state.custom_model = ""
 
         st.caption(f"API key — {KEY_HINTS[provider]}")
         key_input = st.text_input(
@@ -134,15 +124,25 @@ def _render_setup() -> None:
             label_visibility="collapsed",
         )
 
+        options = choices_for(provider)
+        current = st.session_state.model if st.session_state.model in options else PICK_YOUR_OWN
         model_choice = st.selectbox(
             "Model",
-            options=MODEL_OPTIONS[provider],
-            index=0,
+            options=options,
+            index=options.index(current),
             help=(
-                f"Paper-validated model for {PROVIDER_LABELS[provider]}: "
-                f"`{PAPER_MODELS[provider]}` (selected by default)."
+                f"The five newest {PROVIDER_LABELS[provider]} text models still offered, "
+                f"refreshed monthly (list dated {catalog_updated()}). "
+                "Pick your own model if you need a different id."
             ),
         )
+        custom_model = ""
+        if model_choice == PICK_YOUR_OWN:
+            custom_model = st.text_input(
+                "Model id",
+                value=st.session_state.custom_model,
+                placeholder="paste the provider's model id",
+            )
 
         st.html('<div style="height:0.4rem;"></div>')
 
@@ -150,11 +150,17 @@ def _render_setup() -> None:
             if not key_input.strip():
                 st.error("Please paste an API key.")
             else:
-                st.session_state.provider = provider
-                st.session_state.api_key = key_input.strip()
-                st.session_state.model = model_choice
-                st.session_state.step = "generate"
-                st.rerun()
+                try:
+                    model = resolve_choice(model_choice, custom_model)
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state.provider = provider
+                    st.session_state.api_key = key_input.strip()
+                    st.session_state.model = model
+                    st.session_state.custom_model = custom_model.strip()
+                    st.session_state.step = "generate"
+                    st.rerun()
 
         st.html(
             """
