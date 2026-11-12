@@ -26,3 +26,6 @@ Source = "https://github.com/rct-sap-ai/sapai-open"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sapai_open*"]
+
+[tool.setuptools.package-data]
+sapai_open = ["models_catalog.json"]

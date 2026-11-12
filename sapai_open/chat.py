@@ -79,13 +79,15 @@ class AnthropicChat:
         self.client = Anthropic(api_key=api_key)
 
     def get_response(self, prompt: str, system_message: str) -> str:
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            system=system_message,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        kwargs = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system_message,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if self.model == PAPER_MODELS["anthropic"]:
+            kwargs["temperature"] = self.temperature
+        response = self.client.messages.create(**kwargs)
         return (response.content[0].text or "").strip()
 
 
@@ -108,12 +110,12 @@ class GoogleChat:
         self.client = genai.Client(api_key=api_key)
 
     def get_response(self, prompt: str, system_message: str) -> str:
+        config = {"system_instruction": system_message}
+        if self.model == PAPER_MODELS["google"]:
+            config["temperature"] = self.temperature
         response = self.client.models.generate_content(
             model=self.model,
-            config=self._types.GenerateContentConfig(
-                system_instruction=system_message,
-                temperature=self.temperature,
-            ),
+            config=self._types.GenerateContentConfig(**config),
             contents=prompt,
         )
         return (response.text or "").strip()

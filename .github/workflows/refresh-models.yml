@@ -1,0 +1,37 @@
+name: Refresh model catalog
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refresh the five current models per provider
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: python scripts/refresh_models.py
+      - name: Open a pull request when the list changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git diff --quiet && exit 0
+          branch="chore/model-catalog-$(date -u +%Y-%m-%d)"
+          git checkout -B "$branch"
+          git add sapai_open/models_catalog.json
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Refresh the latest five models per provider"
+          git push --force-with-lease -u origin "$branch"
+          gh pr create --base main --head "$branch" --title "Refresh the latest five models per provider" --body "Monthly crawl of the models OpenAI, Anthropic, and Google still offer. The app keeps the newest five text models for each, and Pick your own model stays available." || gh pr view --web "$branch" >/dev/null

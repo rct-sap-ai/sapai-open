@@ -14,11 +14,11 @@ It implements the **section-by-section prompting pipeline** described in
 the paper, using **only the prompts that were validated**, and supports the
 three model families that the paper compared.
 
-| Provider  | Paper-validated model       | Default temperature |
-|-----------|-----------------------------|---------------------|
-| OpenAI    | `gpt-5-2025-08-07`          | default (per paper) |
-| Anthropic | `claude-sonnet-4-20250514`  | 0.2 (per paper)     |
-| Google    | `gemini-2.5-pro`            | 0.2 (per paper)     |
+The paper compared `gpt-5-2025-08-07`, `claude-sonnet-4-20250514`, and
+`gemini-2.5-pro`. The app lists the five newest text models each provider
+still offers, and **Pick your own model** accepts any other id. A monthly
+GitHub Action refreshes that list when `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+and `GOOGLE_API_KEY` are set as repository secrets.
 
 ## What this is
 
