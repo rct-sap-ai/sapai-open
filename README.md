@@ -70,19 +70,12 @@ Open <http://localhost:8501> and follow the two-step flow.
 ## Deployment
 
 The hosted deployment lives at
-<https://supportive-recreation-production.up.railway.app/>. Railway builds
-from the (private) `rct-sap-ai/sapai-streamlit` repo, which depends on this
-repo via `pip install git+https://github.com/rct-sap-ai/sapai-open.git@main`
-in its `requirements.txt`. The production entry point is a thin shim:
+<https://supportive-recreation-production.up.railway.app/>. Railway builds it
+straight from this repo's `main` branch: `railway.json` sets the start command
+(`streamlit run streamlit_app.py`) and healthcheck. The app needs no secrets;
+users enter their own API keys.
 
-```python
-from sapai_open.app import main
-main()
-```
-
-This means iterating on the open app is a normal commit-and-push to this
-repo, followed by a `requirements.txt` SHA bump in `sapai-streamlit` to pick
-up the new version.
+To update the hosted app, merge to `main`; Railway redeploys automatically.
 
 ## Repository structure
 
